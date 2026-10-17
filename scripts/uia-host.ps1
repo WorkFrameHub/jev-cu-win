@@ -219,6 +219,9 @@ function Find-Window([string]$app) {
             $title = '' + $w.Current.Name
             $proc = Get-ProcName $w.Current.ProcessId
         } catch { continue }
+        # The terminal running this tool shows our own command line ("... cli.mjs observe --app X")
+        # in its title, so a partial title match would bind to the terminal itself.
+        if ($title -match '(?i)cli\.mjs') { continue }
         $score = 0
         if ($title -ieq $app) { $score = 4 }
         elseif ($proc -ieq $app -or ($proc + '.exe') -ieq $app) { $score = 3 }
