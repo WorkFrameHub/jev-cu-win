@@ -1,0 +1,10 @@
+[
+  { "name": "電卓 7 を入力", "app": "電卓", "goal": "enter the digit 7", "axFile": "fixtures/uia/calculator-ja.txt", "expectedIndex": 32 },
+  { "name": "電卓 掛け算", "app": "電卓", "goal": "press the multiply operator", "axFile": "fixtures/uia/calculator-ja.txt", "expectedIndex": 27 },
+  { "name": "電卓 結果を出す", "app": "電卓", "goal": "evaluate the expression and show the result", "axFile": "fixtures/uia/calculator-ja.txt", "expectedIndex": 30 },
+  { "name": "電卓 全部クリア", "app": "電卓", "goal": "clear everything and start over", "axFile": "fixtures/uia/calculator-ja.txt", "expectedIndex": 19 },
+  { "name": "電卓 平方根", "app": "電卓", "goal": "take the square root of the current number", "axFile": "fixtures/uia/calculator-ja.txt", "expectedIndex": 24 },
+  { "name": "メモ帳 本文を選ぶ", "app": "メモ帳", "goal": "focus the text editing area to start typing", "axFile": "fixtures/uia/notepad-ja.txt", "expectedIndex": 13 },
+  { "name": "メモ帳 ファイルメニュー", "app": "メモ帳", "goal": "open the File menu", "axFile": "fixtures/uia/notepad-ja.txt", "expectedIndex": 9 },
+  { "name": "メモ帳 新しいタブ", "app": "メモ帳", "goal": "open a new tab", "axFile": "fixtures/uia/notepad-ja.txt", "expectedIndex": 7 }
+]

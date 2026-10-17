@@ -1,0 +1,46 @@
+Window: "電卓", App: CalculatorApp.
+0 standard window 電卓
+	1 title bar 電卓, ID: TitleBar
+		2 button 最小化, ID: Minimize
+		3 button 最大化, ID: Maximize
+		4 button 閉じる, ID: Close
+	5 group 電卓, ID: NavView
+		6 button ナビゲーションを開く, ID: TogglePaneButton
+		7 text 標準 電卓モード, ID: Header
+		8 button 常に手前に表示, ID: NormalAlwaysOnTopButton
+		9 text 表示は 0 です, ID: CalculatorResults
+		10 group メモリ コントロール, ID: MemoryPanel
+			11 button すべてのメモリをクリア, ID: ClearMemoryButton (disabled)
+			12 button メモリの呼び出し, ID: MemRecall (disabled)
+			13 button メモリに加算, ID: MemPlus
+			14 button メモリから減算, ID: MemMinus
+			15 button メモリに保存, ID: memButton
+		16 group 表示コントロール, ID: DisplayControls
+			17 button パーセント, ID: percentButton
+			18 button 入力のクリア, ID: clearEntryButton
+			19 button クリア, ID: clearButton
+			20 button バックスペース, ID: backSpaceButton
+		21 group 標準関数, ID: StandardFunctions
+			22 button 逆数, ID: invertButton
+			23 button 二乗, ID: xpower2Button
+			24 button 平方根, ID: squareRootButton
+		25 group 標準演算子, ID: StandardOperators
+			26 button 除算, ID: divideButton
+			27 button 乗算, ID: multiplyButton
+			28 button マイナス, ID: minusButton
+			29 button プラス, ID: plusButton
+			30 button 等号, ID: equalButton
+		31 group 数字パッド, ID: NumberPad
+			32 button 7, ID: num7Button
+			33 button 8, ID: num8Button
+			34 button 9, ID: num9Button
+			35 button 4, ID: num4Button
+			36 button 5, ID: num5Button
+			37 button 6, ID: num6Button
+			38 button 1, ID: num1Button
+			39 button 2, ID: num2Button
+			40 button 3, ID: num3Button
+			41 button 正負, ID: negateButton
+			42 button 0, ID: num0Button
+			43 button 小数点, ID: decimalSeparatorButton
+The focused UI element is 0 standard window 電卓

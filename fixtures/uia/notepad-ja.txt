@@ -1,0 +1,22 @@
+Window: "タイトルなし - メモ帳", App: Notepad.
+0 standard window タイトルなし - メモ帳
+	1 title bar タイトルなし - メモ帳
+		2 button 最小化, ID: Minimize
+		3 button 最大化, ID: Maximize
+		4 button 閉じる, ID: Close
+	5 tab list タブ
+		6 tab タイトルなし
+		7 button 新しいタブを追加, ID: AddButton
+	8 menu bar メニュー バー
+		9 menu item ファイル, ID: File
+		10 menu item 編集, ID: Edit
+		11 menu item 表示, ID: View
+	12 button 設定, ID: SettingsButton
+	13 document テキスト エディター, ID: RichEditBox
+	14 status bar
+		15 text 行 1、列 1
+		16 text 0 文字
+		17 text 100%
+		18 text Windows (CRLF)
+		19 text UTF-8
+The focused UI element is 13 document テキスト エディター, ID: RichEditBox

@@ -1,0 +1,19 @@
+{
+  "name": "jev-cu-win",
+  "version": "0.1.0",
+  "description": "Jev（TypeSafe System One）の判断 + Windows UI Automation による操作（Jev-cu の Windows 版）",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "jev-cu-win": "scripts/cli.mjs"
+  },
+  "scripts": {
+    "start": "node scripts/cli.mjs",
+    "test": "node --test tests/core.test.mjs",
+    "p0": "node scripts/p0-eval.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
