@@ -196,8 +196,25 @@ function Get-Pattern($el, $pattern) {
     return $null
 }
 
+# Elements read by Cmd-Observe carry a cache of the properties below, filled by one
+# cross-process call for the whole tree. Reading .Current instead costs one call per
+# property per element, which made a Chrome page take ~0.5 s to observe.
+$ObserveCache = New-Object System.Windows.Automation.CacheRequest
+$ObserveCache.TreeFilter = [System.Windows.Automation.Automation]::ControlViewCondition
+$ObserveCache.TreeScope = [System.Windows.Automation.TreeScope]::Subtree
+foreach ($prop in @($AE::ControlTypeProperty, $AE::NameProperty, $AE::AutomationIdProperty, $AE::IsOffscreenProperty,
+        $AE::IsEnabledProperty, $AE::IsPasswordProperty, [System.Windows.Automation.ValuePattern]::ValueProperty)) {
+    $ObserveCache.Add($prop)
+}
+$ObserveCache.Add([System.Windows.Automation.ValuePattern]::Pattern)
+
+# Cached properties when the element came from Cmd-Observe, live ones otherwise.
+function Get-Info($el) {
+    try { return $el.Cached } catch { return $el.Current }
+}
+
 function Get-TypeName($el) {
-    return ($el.Current.ControlType.ProgrammaticName -replace '^ControlType\.', '')
+    return ((Get-Info $el).ControlType.ProgrammaticName -replace '^ControlType\.', '')
 }
 
 function Get-Role($el, [string]$type, [int]$depth) {
@@ -205,22 +222,33 @@ function Get-Role($el, [string]$type, [int]$depth) {
     $role = $RoleMap[$type]
     if (-not $role) { $role = 'container' }
     if ($type -eq 'Edit') {
-        $hint = '' + $el.Current.Name + ' ' + $el.Current.AutomationId
+        $c = Get-Info $el
+        $hint = '' + $c.Name + ' ' + $c.AutomationId
         if ($hint -match '(?i)search|find' -or $hint.Contains($SearchJa)) { $role = 'search field' }
     }
     return $role
 }
 
+function Get-Value($el) {
+    try {
+        $v = $el.GetCachedPropertyValue([System.Windows.Automation.ValuePattern]::ValueProperty)
+        if ([object]::ReferenceEquals($v, $AE::NotSupported)) { return $null }
+        return '' + $v
+    } catch { }
+    $vp = Get-Pattern $el ([System.Windows.Automation.ValuePattern]::Pattern)
+    if ($vp) { return $vp.Current.Value }
+    return $null
+}
+
 function Get-Label($el, [string]$type) {
-    $c = $el.Current
+    $c = Get-Info $el
     $name = Clean $c.Name
     $parts = New-Object System.Collections.ArrayList
     if ($name) { [void]$parts.Add($name) }
     $value = $null
     if (-not $c.IsPassword) {
         if ($ValueTypes -contains $type) {
-            $vp = Get-Pattern $el ([System.Windows.Automation.ValuePattern]::Pattern)
-            if ($vp) { $value = $vp.Current.Value }
+            $value = Get-Value $el
         } elseif ($type -eq 'Document') {
             $tp = Get-Pattern $el ([System.Windows.Automation.TextPattern]::Pattern)
             if ($tp) { $value = $tp.DocumentRange.GetText(300) }
@@ -236,15 +264,25 @@ function Get-Label($el, [string]$type) {
     return $label
 }
 
+# Top-level windows with their titles and process ids fetched in one call.
+$WindowCache = New-Object System.Windows.Automation.CacheRequest
+$WindowCache.Add($AE::NameProperty)
+$WindowCache.Add($AE::ProcessIdProperty)
+
 function Find-Window([string]$app) {
     $root = $AE::RootElement
-    $wins = $root.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)
+    $act = $WindowCache.Activate()
+    try { $wins = $root.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition) }
+    finally { $act.Dispose() }
+    # One process snapshot instead of a Get-Process call per window.
+    $procNames = @{}
+    foreach ($p in [System.Diagnostics.Process]::GetProcesses()) { $procNames[$p.Id] = $p.ProcessName }
     $best = $null; $bestScore = 0
     $app = (Normalize-Text $app).Trim()
     foreach ($w in $wins) {
         try {
-            $title = Normalize-Text $w.Current.Name
-            $proc = Get-ProcName $w.Current.ProcessId
+            $title = Normalize-Text $w.Cached.Name
+            $proc = '' + $procNames[$w.Cached.ProcessId]
         } catch { continue }
         # The terminal running this tool shows our own command line ("... cli.mjs observe --app X")
         # in its title, so a partial title match would bind to the terminal itself.
@@ -303,15 +341,16 @@ function Cmd-Observe($a) {
     [void]$sb.AppendLine('Window: "' + $title + '", App: ' + $proc + '.')
     $script:Truncated = $false
 
+    $root = $script:Window.GetUpdatedCache($ObserveCache)
     $stack = New-Object System.Collections.Stack
-    $stack.Push(@($script:Window, 0))
+    $stack.Push(@($root, 0))
     while ($stack.Count -gt 0) {
         $item = $stack.Pop(); $el = $item[0]; $depth = $item[1]
         if ($script:Elements.Count -ge $maxNodes) { $script:Truncated = $true; break }
         try {
             $type = Get-TypeName $el
             if ($SkipTypes -contains $type) { continue }
-            $emit = ($depth -eq 0) -or (-not $el.Current.IsOffscreen)
+            $emit = ($depth -eq 0) -or (-not $el.Cached.IsOffscreen)
             if ($emit) {
                 $index = $script:Elements.Add($el)
                 $line = ("`t" * $depth) + $index + ' ' + (Get-Role $el $type $depth) + ' ' + (Get-Label $el $type)
@@ -320,11 +359,9 @@ function Cmd-Observe($a) {
         } catch { continue }
         if ($depth -ge $maxDepth) { continue }
         # Push children in reverse so they pop in document order.
-        $children = New-Object System.Collections.ArrayList
-        try {
-            $child = $Walker.GetFirstChild($el)
-            while ($null -ne $child) { [void]$children.Add($child); $child = $Walker.GetNextSibling($child) }
-        } catch { }
+        $children = $null
+        try { $children = $el.CachedChildren } catch { }
+        if ($null -eq $children) { continue }
         for ($k = $children.Count - 1; $k -ge 0; $k--) { $stack.Push(@($children[$k], ($depth + 1))) }
     }
     if ($script:Truncated) { [void]$sb.AppendLine('(tree truncated at ' + $maxNodes + ' elements)') }

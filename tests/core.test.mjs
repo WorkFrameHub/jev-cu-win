@@ -281,6 +281,34 @@ test("runTask：同じ文字を 2 回入力しようとしたら止める", asyn
   assert.equal(driver.calls.filter(([c]) => c === "typeText").length, 1);
 });
 
+test("runTask：入力欄をクリックしたら、用意された文字を同じ手で続けて入力する", async () => {
+  const typed = NOTEPAD.replace("0 文字", "5 文字");
+  const driver = fakeDriver([NOTEPAD, typed, typed]);
+  let n = 0;
+  const r = await runTask({
+    driver, appName: "メモ帳", goal: "type hello", dryRun: false, maxSteps: 3, emit: quiet, traceDir: tmpTrace(),
+    settleDelayMs: 1, resources: { text: "hello" },
+    // 1 手目はクリックだけ、2 手目で type_text を選ぶ（Jev のよくある順番）
+    decide: async () => (n++ === 0 ? { ...safe, targetIndex: 13, action: "click_element" } : { ...safe, targetIndex: 13, action: "type_text" }),
+    verify: (ax) => ax.includes("5 文字"),
+  });
+  assert.equal(r.status, "done");
+  assert.equal(n, 1, "クリックの手で入力まで終わるので、Jev の判断は 1 回だけ");
+  assert.deepEqual(driver.calls.slice(1), [["click", 13], ["typeText", "hello"]]);
+});
+
+test("runTask：入力欄以外のクリックや typeOnClick=false では文字を打たない", async () => {
+  for (const [targetIndex, typeOnClick] of [[9, true], [13, false]]) {
+    const driver = fakeDriver([NOTEPAD, NOTEPAD + "\n"]);
+    await runTask({
+      driver, appName: "メモ帳", goal: "type hello", dryRun: false, maxSteps: 1, emit: quiet, traceDir: tmpTrace(),
+      resources: { text: "hello" }, typeOnClick,
+      decide: async () => ({ ...safe, targetIndex, action: "click_element" }),
+    });
+    assert.deepEqual(driver.calls.slice(1), [["click", targetIndex]], `i${targetIndex} typeOnClick=${typeOnClick}`);
+  }
+});
+
 test("runTask：文字入力のあとは画面が落ち着くまで読み直してから判断する", async () => {
   const partial = NOTEPAD.replace("0 文字", "3 文字");
   const full = NOTEPAD.replace("0 文字", "9 文字");

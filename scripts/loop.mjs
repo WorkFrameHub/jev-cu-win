@@ -78,6 +78,9 @@ const CLICKABLE_ROLES = new Set([
   "header item",
 ]);
 
+/** 文字を打ち込める要素。クリックしたら用意された文字をそのまま入力してよい */
+const TEXT_INPUT_ROLES = new Set(["text field", "search field", "document"]);
+
 /** UI ツリーのテキストを要素一覧に解析：{index, role, label, depth, raw} */
 export function parseAX(axText) {
   const out = [];
@@ -170,6 +173,7 @@ export async function runTask({
   settleChecks = 6, // 文字入力後、画面が落ち着くまで読み直す最大回数
   settleDelayMs = 300,
   onConfirm, // 任意：({decision, gate}) → boolean。confirm 判定のとき人に確認し、true なら実行する
+  typeOnClick = true, // 入力欄をクリックしたら、用意された文字（--text）を同じ手で続けて入力する
 }) {
   const runId = traceId ?? `${new Date().toISOString().replace(/[:.]/g, "-")}-${appName.replace(/[^\p{L}\p{N}]+/gu, "")}`;
   fs.mkdirSync(traceDir, { recursive: true });
@@ -277,8 +281,19 @@ export async function runTask({
 
     const tAct = Date.now();
     const stepResources = typeof resources === "function" ? ((await resources(step, decision)) ?? {}) : resources;
+    // Jev は入力欄に「クリック」→「入力」の 2 手をかけがち。まだ打っていない文字が用意されていれば、
+    // クリックした手で続けて入力し、1 項目を 1 手で終える（判断と読み直しが 1 回ずつ減る）。
+    const pendingText = String(stepResources.text ?? "");
+    const typeAfterClick =
+      typeOnClick &&
+      decision.action === "click_element" &&
+      !Array.isArray(stepResources.at) &&
+      pendingText !== "" &&
+      !typedTexts.has(pendingText) &&
+      TEXT_INPUT_ROLES.has(selected?.role);
+    if (typeAfterClick) decision = { ...decision, action: "click_and_type" };
     // type_text は追記なので、同じ文字を 2 回打つと内容が重複する。2 回目は打たずに止める。
-    if (decision.action === "type_text") {
+    if (decision.action === "type_text" || decision.action === "click_and_type") {
       const text = String(stepResources.text ?? "");
       if (typedTexts.has(text)) {
         return finish("escalate", {
@@ -303,7 +318,7 @@ export async function runTask({
     const previousObservation = observation;
     observation = await driver.observe({ full: true });
     // 文字入力はアプリ側の描画が遅れる。画面が落ち着くまで読み直し、書きかけの状態で判断させない。
-    if (["type_text", "set_value"].includes(decision.action)) {
+    if (["type_text", "set_value", "click_and_type"].includes(decision.action)) {
       for (let i = 0; i < settleChecks; i++) {
         await sleep(settleDelayMs);
         const again = await driver.observe({ full: true });
@@ -343,6 +358,9 @@ export async function executeAction(driver, decision, resources = {}) {
     case "set_value":
       return driver.setValue(decision.targetIndex, String(resources.text ?? ""));
     case "type_text":
+      return driver.typeText(String(resources.text ?? ""));
+    case "click_and_type":
+      await driver.click(decision.targetIndex);
       return driver.typeText(String(resources.text ?? ""));
     case "press_key":
       return driver.pressKey(String(resources.key ?? "Enter"));
