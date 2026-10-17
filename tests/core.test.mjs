@@ -234,3 +234,32 @@ test("uia-driver：JSON 行で要求・応答し、click の種類を振り分�
     ["clickAt", { x: 10, y: 20, button: "right" }],
   ]);
 });
+
+test("runTask：ask_user は確認を出さずに止まり、何もクリックしない", async () => {
+  const shown = CALC.replace("表示は 0 です", "表示は 36 です");
+  const driver = fakeDriver([shown]);
+  let asked = false;
+  const r = await runTask({
+    driver, appName: "電卓", goal: "calculate 12 times 3", dryRun: false, emit: quiet, traceDir: tmpTrace(),
+    decide: async () => ({ ...safe, targetIndex: 19, action: "ask_user", confidence: 0.5 }),
+    onConfirm: async () => (asked = true),
+  });
+  assert.equal(r.status, "ask_user");
+  assert.equal(asked, false);
+  assert.ok(r.message.includes("表示は 36 です"));
+  assert.equal(driver.calls.some(([c]) => c === "click"), false);
+});
+
+test("runTask：verify（--done-when）が満たされたら Jev の判断を待たずに完了", async () => {
+  const shown = CALC.replace("表示は 0 です", "表示は 7 です");
+  const driver = fakeDriver([CALC, shown]);
+  let calls = 0;
+  const r = await runTask({
+    driver, appName: "電卓", goal: "enter 7", dryRun: false, emit: quiet, traceDir: tmpTrace(),
+    decide: async () => { calls++; return { ...safe, done: 0.1, action: "click_element" }; },
+    verify: (ax) => ax.includes("表示は 7 です"),
+  });
+  assert.equal(r.status, "done");
+  assert.equal(r.verified, true);
+  assert.equal(calls, 1);
+});

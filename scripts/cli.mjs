@@ -31,6 +31,7 @@ run のオプション:
   --at <x,y>           ウィンドウ左上基準でクリックする座標
   --allow-app <名前>   許可リストにアプリを追加（複数回指定可）
   --plan <文>          Jev に渡す手順のヒント
+  --done-when <文字>   画面にこの文字が出たら完了（例: "表示は 36 です"。複数回指定可）
   --yes                確認が必要な操作も自動で承認する（非推奨）
 `;
 
@@ -57,6 +58,7 @@ async function main() {
       to: { type: "string" },
       "allow-app": { type: "string", multiple: true, default: [] },
       plan: { type: "string", default: "" },
+      "done-when": { type: "string", multiple: true, default: [] },
       yes: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -109,6 +111,7 @@ async function main() {
             to: parsePoint(values.to, "--to"),
           },
           onConfirm,
+          verify: values["done-when"].length ? (ax) => values["done-when"].every((t) => ax.includes(t)) : undefined,
         });
         if (result.status === "dry_run") {
           console.log(`\n試運転：次は ${result.planned.action} → i${result.planned.targetIndex} (${result.planned.targetLabel})`);

@@ -77,6 +77,14 @@ Jev がどの要素を選んだかが表示されます。**目標（--goal）�
 node scripts/cli.mjs run --app 電卓 --goal "calculate 12 times 3" --execute --max-steps 8
 ```
 
+### 完了の条件を指定する
+
+Jev が「もう終わった」と判断できずに止まることがあります。`--done-when` で、画面にその文字が出たら完了にできます（`observe` で表示される文字をそのまま使ってください）。
+
+```powershell
+node scripts/cli.mjs run --app 電卓 --goal "calculate 12 times 3" --execute --max-steps 8 --done-when "表示は 36 です"
+```
+
 ### 文字を入力する例（メモ帳）
 
 Jev は文章を作りません。入力する文字は `--text` で渡します。
@@ -98,6 +106,7 @@ node scripts/cli.mjs run --app メモ帳 --goal "type the text into the editor" 
 | `--from <x,y>` `--to <x,y>` | ドラッグの始点と終点（同じ座標系） |
 | `--allow-app <名前>` | 許可リストにアプリを追加（複数回指定可） |
 | `--plan <文>` | Jev に渡す手順のヒント（英語推奨） |
+| `--done-when <文字>` | 画面にこの文字が出たら完了（複数回指定可） |
 | `--yes` | 確認が必要な操作も自動で承認（**非推奨**） |
 
 `--app` には、ウィンドウタイトル（`電卓`、`メモ帳` など。部分一致可）か、プロセス名（`notepad`、`CalculatorApp` など）を指定します。

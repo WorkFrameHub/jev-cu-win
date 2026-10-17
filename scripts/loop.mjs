@@ -244,6 +244,16 @@ export async function runTask({
     if (gate.verdict === "done") {
       return finish("done", { steps: step - 1, tracePath, decision, gate, elapsedMs: Date.now() - startedAt });
     }
+    // ask_user は「止まって人に聞く」の意味で、実行できる操作ではない。y/N を出さずに止める。
+    if (decision.action === "ask_user") {
+      return finish("ask_user", {
+        steps: step - 1,
+        tracePath,
+        decision,
+        message: `Jev が人の判断を求めて止まりました（完了済みの可能性があります）。現在の画面：\n${screenSummary(observation)}`,
+        elapsedMs: Date.now() - startedAt,
+      });
+    }
     if (gate.verdict === "confirm" && !dryRun && onConfirm && decision.targetIndex != null) {
       const approved = await onConfirm({ decision, gate });
       record({ event: "confirm", step, approved });
@@ -317,6 +327,15 @@ export async function executeAction(driver, decision, resources = {}) {
     default:
       throw new Error(`未対応の操作：${decision.action}`);
   }
+}
+
+/** 画面の主要テキスト（電卓の表示値など）を人が読む用にまとめる */
+function screenSummary(axText) {
+  const texts = parseAX(axText)
+    .filter((e) => e.role === "text" && e.label)
+    .slice(0, 6)
+    .map((e) => `  ${e.label}`);
+  return texts.length ? texts.join("\n") : "  （テキストなし）";
 }
 
 const fmt = (n) => (typeof n === "number" ? n.toFixed(2) : "n/a");
