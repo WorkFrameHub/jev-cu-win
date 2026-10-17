@@ -263,3 +263,9 @@ test("runTask：verify（--done-when）が満たされたら Jev の判断を待
   assert.equal(r.verified, true);
   assert.equal(calls, 1);
 });
+
+test("見えない文字（ゼロ幅スペース）を挟んだ危険語も検出する", () => {
+  assert.equal(matchSensitive("削​除").id, "delete");
+  assert.equal(matchSensitive("del‍ete file").id, "delete");
+  assert.equal(sanitizeLabel("Microsoft​ Edge"), "Microsoft Edge");
+});

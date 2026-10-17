@@ -40,7 +40,8 @@ export const LOW_RISK_APPS = ["電卓", "Calculator", "メモ帳", "Notepad", "�
 const includesApp = (list, app) => list.some((a) => a.toLowerCase() === String(app ?? "").toLowerCase());
 
 export function matchSensitive(label = "") {
-  const text = String(label);
+  // 見えない文字（ゼロ幅スペースなど）を挟んで危険語をすり抜けられないように除去してから判定する
+  const text = String(label).replace(/\p{Cf}/gu, "");
   return SENSITIVE_LABEL_PATTERNS.find((p) => p.re.test(text)) ?? null;
 }
 

@@ -36,6 +36,11 @@ public static class JevInput {
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
     [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int cmd);
     [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern bool BringWindowToTop(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr processId);
+    [DllImport("user32.dll")] static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool attach);
+    [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
     [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
     [DllImport("user32.dll")] static extern bool SetProcessDpiAwarenessContext(IntPtr value);
 
@@ -64,10 +69,21 @@ public static class JevInput {
 
     public static void Activate(IntPtr hwnd) {
         if (hwnd == IntPtr.Zero) return;
-        if (IsIconic(hwnd)) ShowWindow(hwnd, 9); // SW_RESTORE
-        // Tapping Alt lets a background process take the foreground.
-        Send(new INPUT[] { Key(0x12, 0, 0), Key(0x12, 0, KEYEVENTF_KEYUP) });
-        SetForegroundWindow(hwnd);
+        if (IsIconic(hwnd)) { ShowWindow(hwnd, 9); Thread.Sleep(150); } // SW_RESTORE
+        if (GetForegroundWindow() == hwnd) return;
+        // A zero-distance mouse move makes this process the source of the last input event,
+        // which lets it take the foreground. Do not tap Alt for this: in apps with a menu bar
+        // (Notepad) Alt activates the menu and the following keystrokes become menu shortcuts.
+        Send(new INPUT[] { Mouse(MOUSEEVENTF_MOVE, 0) });
+        if (!SetForegroundWindow(hwnd)) {
+            uint fg = GetWindowThreadProcessId(GetForegroundWindow(), IntPtr.Zero);
+            uint me = GetCurrentThreadId();
+            if (fg != 0 && fg != me && AttachThreadInput(me, fg, true)) {
+                BringWindowToTop(hwnd);
+                SetForegroundWindow(hwnd);
+                AttachThreadInput(me, fg, false);
+            }
+        }
         Thread.Sleep(80);
     }
 
@@ -153,9 +169,16 @@ $SkipTypes = @('ScrollBar', 'Thumb', 'Separator')
 $ValueTypes = @('Edit', 'ComboBox', 'Spinner', 'DataItem')
 $SearchJa = [string][char]0x691C + [char]0x7D22 # "kensaku" (search) in Japanese
 
+# Edge puts a zero-width space in its title ("Microsoft<U+200B> Edge"). Drop invisible
+# format characters and non-breaking spaces so names match what the user types.
+function Normalize-Text([string]$s) {
+    if ($null -eq $s) { return '' }
+    return (($s -replace '\p{Cf}', '') -replace '\u00A0', ' ')
+}
+
 function Clean([string]$s, [int]$max = 160) {
     if ($null -eq $s) { return '' }
-    $s = ($s -replace '[\r\n\t]+', ' ').Trim()
+    $s = ((Normalize-Text $s) -replace '[\r\n\t]+', ' ').Trim()
     if ($s.Length -gt $max) { $s = $s.Substring(0, $max) + '...' }
     return $s
 }
@@ -214,9 +237,10 @@ function Find-Window([string]$app) {
     $root = $AE::RootElement
     $wins = $root.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)
     $best = $null; $bestScore = 0
+    $app = (Normalize-Text $app).Trim()
     foreach ($w in $wins) {
         try {
-            $title = '' + $w.Current.Name
+            $title = Normalize-Text $w.Current.Name
             $proc = Get-ProcName $w.Current.ProcessId
         } catch { continue }
         # The terminal running this tool shows our own command line ("... cli.mjs observe --app X")
@@ -237,7 +261,7 @@ function Cmd-ListWindows {
     $list = New-Object System.Collections.ArrayList
     foreach ($w in $wins) {
         try {
-            $title = '' + $w.Current.Name
+            $title = Normalize-Text $w.Current.Name
             if (-not $title) { continue }
             [void]$list.Add(@{ title = $title; process = (Get-ProcName $w.Current.ProcessId); pid = $w.Current.ProcessId })
         } catch { }

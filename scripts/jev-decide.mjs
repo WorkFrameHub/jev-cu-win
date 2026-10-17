@@ -55,6 +55,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /** 候補の説明文を整形：URL などのノイズを除き、トークン量を抑える（単体テスト用に export） */
 export function sanitizeLabel(text, max = 120) {
   return String(text ?? "")
+    .replace(/\p{Cf}/gu, "")
     .replace(/\b(?:https?|file|javascript|data|ms-[a-z-]+):\S*/gi, "")
     .replace(/\s+/g, " ")
     .trim()
