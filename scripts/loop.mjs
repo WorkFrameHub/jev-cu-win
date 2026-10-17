@@ -167,6 +167,8 @@ export async function runTask({
   plan = "",
   jevOptions = {},
   verify, // 任意：UI ツリー全文 → boolean。指定すると最終目標をこれで検証する
+  settleChecks = 6, // 文字入力後、画面が落ち着くまで読み直す最大回数
+  settleDelayMs = 300,
   onConfirm, // 任意：({decision, gate}) → boolean。confirm 判定のとき人に確認し、true なら実行する
 }) {
   const runId = traceId ?? `${new Date().toISOString().replace(/[:.]/g, "-")}-${appName.replace(/[^\p{L}\p{N}]+/gu, "")}`;
@@ -180,6 +182,7 @@ export async function runTask({
   await driver.bind(appName);
   let observation = await driver.observe({ full: true });
   const recentActions = [];
+  const typedTexts = new Set();
   const startedAt = Date.now();
 
   for (let step = 1; step <= maxSteps; step++) {
@@ -274,6 +277,20 @@ export async function runTask({
 
     const tAct = Date.now();
     const stepResources = typeof resources === "function" ? ((await resources(step, decision)) ?? {}) : resources;
+    // type_text は追記なので、同じ文字を 2 回打つと内容が重複する。2 回目は打たずに止める。
+    if (decision.action === "type_text") {
+      const text = String(stepResources.text ?? "");
+      if (typedTexts.has(text)) {
+        return finish("escalate", {
+          steps: step - 1,
+          tracePath,
+          decision,
+          message: `同じ文字をもう一度入力しようとしたので止めました（入力済みの可能性があります）。現在の画面：\n${screenSummary(observation)}`,
+          elapsedMs: Date.now() - startedAt,
+        });
+      }
+      typedTexts.add(text);
+    }
     try {
       await executeAction(driver, decision, stepResources);
     } catch (err) {
@@ -285,6 +302,15 @@ export async function runTask({
     await sleep(300); // UI の更新を待つ
     const previousObservation = observation;
     observation = await driver.observe({ full: true });
+    // 文字入力はアプリ側の描画が遅れる。画面が落ち着くまで読み直し、書きかけの状態で判断させない。
+    if (["type_text", "set_value"].includes(decision.action)) {
+      for (let i = 0; i < settleChecks; i++) {
+        await sleep(settleDelayMs);
+        const again = await driver.observe({ full: true });
+        if (again === observation) break;
+        observation = again;
+      }
+    }
     const noChange = observation === previousObservation;
     recentActions.push(`${decision.action} i${decision.targetIndex} (${decision.targetLabel ?? ""}) → ${noChange ? "no change" : "changed"}`);
     emit(`         └ 操作 ${actMs}ms · ${noChange ? "画面変化なし" : "画面が変化"}`);

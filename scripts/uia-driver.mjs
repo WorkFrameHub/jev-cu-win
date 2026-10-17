@@ -71,14 +71,14 @@ export function createPowerShellTransport({
   });
 
   return {
-    request(cmd, args = {}) {
+    request(cmd, args = {}, { timeoutMs: callTimeoutMs = timeoutMs } = {}) {
       if (exited) return Promise.reject(exited);
       const id = nextId++;
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
           pending.delete(id);
-          reject(new Error(`UI Automation：${cmd} が ${timeoutMs}ms 以内に応答しませんでした`));
-        }, timeoutMs);
+          reject(new Error(`UI Automation：${cmd} が ${callTimeoutMs}ms 以内に応答しませんでした`));
+        }, callTimeoutMs);
         pending.set(id, { resolve, reject, timer });
         child.stdin.write(JSON.stringify({ id, cmd, args }) + "\n");
       });
@@ -97,6 +97,8 @@ export function createPowerShellTransport({
  */
 export function createUiaDriver({ transport, maxNodes = 1500, maxDepth = 40 } = {}) {
   const t = transport ?? createPowerShellTransport();
+  // 文字入力はホスト側で 1 文字ずつ間を空けるので、長い文章ほど時間がかかる
+  const typingTimeout = (text) => ({ timeoutMs: 30_000 + String(text).length * 50 });
   return {
     async bind(appName) {
       return t.request("bind", { app: appName });
@@ -114,10 +116,10 @@ export function createUiaDriver({ transport, maxNodes = 1500, maxDepth = 40 } = 
       return t.request("drag", { from, to });
     },
     async setValue(index, text) {
-      return t.request("setValue", { index, text });
+      return t.request("setValue", { index, text }, typingTimeout(text));
     },
     async typeText(text) {
-      return t.request("typeText", { text });
+      return t.request("typeText", { text }, typingTimeout(text));
     },
     async pressKey(key) {
       return t.request("pressKey", { key });

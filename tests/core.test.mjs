@@ -269,3 +269,28 @@ test("見えない文字（ゼロ幅スペース）を挟んだ危険語も検�
   assert.equal(matchSensitive("del‍ete file").id, "delete");
   assert.equal(sanitizeLabel("Microsoft​ Edge"), "Microsoft Edge");
 });
+
+test("runTask：同じ文字を 2 回入力しようとしたら止める", async () => {
+  const driver = fakeDriver([NOTEPAD, NOTEPAD + "\n"]);
+  const r = await runTask({
+    driver, appName: "メモ帳", goal: "type", dryRun: false, maxSteps: 5, emit: quiet, traceDir: tmpTrace(),
+    settleChecks: 0, resources: { text: "1\n2\n3" },
+    decide: async () => ({ ...safe, targetIndex: 13, action: "type_text" }),
+  });
+  assert.equal(r.status, "escalate");
+  assert.equal(driver.calls.filter(([c]) => c === "typeText").length, 1);
+});
+
+test("runTask：文字入力のあとは画面が落ち着くまで読み直してから判断する", async () => {
+  const partial = NOTEPAD.replace("0 文字", "3 文字");
+  const full = NOTEPAD.replace("0 文字", "9 文字");
+  const driver = fakeDriver([NOTEPAD, partial, full, full]);
+  const seen = [];
+  let n = 0;
+  await runTask({
+    driver, appName: "メモ帳", goal: "type", dryRun: false, maxSteps: 2, emit: quiet, traceDir: tmpTrace(),
+    settleDelayMs: 1, resources: { text: "abc" },
+    decide: async ({ context }) => { seen.push(context); return n++ === 0 ? { ...safe, targetIndex: 13, action: "type_text" } : { ...safe, done: 0.99 }; },
+  });
+  assert.ok(seen[1].includes("9 文字"), "2 回目の判断は落ち着いた後の画面で行う");
+});

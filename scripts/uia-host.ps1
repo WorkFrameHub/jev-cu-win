@@ -132,12 +132,15 @@ public static class JevInput {
         Send(inputs);
     }
 
+    // Paced on purpose: Windows 11 Notepad drops Enter presses that arrive in a burst of
+    // characters, which joined lines together.
     public static void TypeUnicode(string text) {
         foreach (char c in text) {
             if (c == '\r') continue;
-            if (c == '\n') { Keys(new ushort[] { 0x0D }); continue; }
-            if (c == '\t') { Keys(new ushort[] { 0x09 }); continue; }
+            if (c == '\n') { Keys(new ushort[] { 0x0D }); Thread.Sleep(40); continue; }
+            if (c == '\t') { Keys(new ushort[] { 0x09 }); Thread.Sleep(15); continue; }
             Send(new INPUT[] { Key(0, c, KEYEVENTF_UNICODE), Key(0, c, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP) });
+            Thread.Sleep(4);
         }
     }
 }
