@@ -1,5 +1,7 @@
 # jev-cu-win
 
+[English](README.en.md) | 日本語
+
 [Jev-cu](https://github.com/Sac-Y/Jev-cu) の **Windows 版** です。
 
 Windows アプリの「次にどこを押すか」を **Jev**（TypeSafe の System One モデル）に判断させて、Windows の **UI Automation** で実際に操作します。
@@ -115,9 +117,10 @@ node scripts/cli.mjs run --app メモ帳 --goal "type the text into the editor" 
 
 - **既定は試運転**。`--execute` を付けたときだけ操作します
 - **許可リスト**（`scripts/policy.mjs` の `DEFAULT_ALLOWED_APPS`）：電卓、メモ帳、ペイント、Edge、Chrome。それ以外のアプリは毎回確認します
-- **危険語**（削除・送信・購入・パスワード・インストール・共有など、日本語・英語・中国語）を含む要素や、Jev がリスクありと判断した操作は、実行前に確認します
+- **危険語**（削除・送信・購入・パスワード・インストール・共有など、日本語・英語・中国語）を含む要素や、Jev がリスクありと判断した操作は、実行前に確認します。ゼロ幅スペースなどの見えない文字は、判定の前に取り除きます
 - 確信度が低いときは止まります
 - パスワード欄の中身は読み取りません
+- 1 回の実行で同じ文字を 2 回入力しようとしたら止まります
 - 操作の記録は `runs/` フォルダに JSONL で残ります
 
 ## 開発者向け
@@ -136,6 +139,7 @@ npm run p0   # オフライン評価：保存した UI ツリーで Jev の正�
 | `scripts/uia-driver.mjs` | Node.js ⇔ PowerShell の通信 |
 | `scripts/uia-host.ps1` | UI Automation で画面を読み取り、操作する（PowerShell 5.1 / 7 対応） |
 | `fixtures/uia/` | テスト用の UI ツリー（Windows 11 日本語版の電卓・メモ帳を模したもの） |
+| `TESTING.md` | Windows 実機でのテスト手順 |
 
 PowerShell を別のもの（例：PowerShell 7）にしたい場合は、環境変数 `JEV_CU_POWERSHELL=pwsh.exe` を設定してください。
 
