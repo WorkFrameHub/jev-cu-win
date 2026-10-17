@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node scripts/cli.mjs",
-    "test": "node --test tests/core.test.mjs",
+    "test": "node --test tests/core.test.mjs tests/skill.test.mjs",
     "p0": "node scripts/p0-eval.mjs"
   },
   "engines": {

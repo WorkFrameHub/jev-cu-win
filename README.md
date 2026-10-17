@@ -47,6 +47,65 @@ notepad .env.local
 
 依存パッケージはありません（`npm install` は不要です）。
 
+## Codex skill として使う（任意）
+
+CLI はそのまま利用できます。`skill/jev-cu-win/SKILL.md` は、Codex がこの CLI を呼ぶための薄い手順書です。元祖 [Jev-cu の skill + scripts 構成](https://github.com/Sac-Y/Jev-cu)を参考にしていますが、macOS AX / `cua_repl` には依存しません。**SKILL.md を置いても Node.js・PowerShell・API キーはインストール／設定されません。** 上のセットアップは利用者が別途行ってください。skill の設置スクリプトも認証情報には触れません。
+
+### 依存と実行環境の確認
+
+リポジトリのルートで、API や GUI を使わず確認できます。
+
+```powershell
+node --version                         # 20 以上
+Get-Command powershell.exe             # 標準の PowerShell
+# JEV_CU_POWERSHELL を指定済みなら、その実行ファイルも確認する
+node scripts/cli.mjs --help
+node scripts/install-skill.mjs --help
+```
+
+追加の npm パッケージは不要です。`run` 用の TypeSafe キーは、このプロセスの `TYPESAFE_API_KEY` または checkout 直下の `.env.local` に利用者が用意します。AI に値を取得・表示させないでください。`windows` / `observe` には API キーは不要です。
+
+skill が見つかることと、目的の Windows デスクトップにアクセスできることは別です。[公式 Windows sandbox 文書](https://learn.chatgpt.com/docs/windows/windows-sandbox)では private desktop を使う構成も説明されています。WSL・cloud・sandbox 越しの通常デスクトップ操作は動作確認済みの対応環境ではありません。利用時はまず `windows` / `observe` で対象を確認し、見えなければ停止して利用者の Windows ターミナルへ引き継ぎます。sandbox 無効化を標準手順にはしません。
+
+### 設置
+
+[現行公式の探索先](https://learn.chatgpt.com/docs/build-skills)に合わせ、標準は `$HOME/.agents/skills/jev-cu-win` です（確認日: 2026-10-17）。元祖の `~/.codex/skills` 固定ではありません。対象 Codex ホストの公式仕様を確認して配置先を選んでください。
+
+次のコマンドは **skill のファイルを書き込みます**。利用する Windows ホストで、設置したいときだけ実行してください。
+
+```powershell
+node scripts/install-skill.mjs
+```
+
+`SKILL.md` の `{{REPO_DIR}}` を現在の checkout の絶対パスに置換し、MIT `LICENSE` と管理用ファイルをコピーします。CLI 本体はコピーしないため、この checkout を残してください。既存の同名ディレクトリがある場合は上書きせず停止します。
+
+プロジェクト内だけで使う場合は、そのプロジェクトの `.agents/skills` を明示できます。
+
+```powershell
+node scripts/install-skill.mjs --skills-dir "C:/path/to/project/.agents/skills"
+```
+
+`--skills-dir` は `jev-cu-win` の**親ディレクトリ**です。Codex はリポジトリ内の作業ディレクトリからルートまでの `.agents/skills` も探索します。ユーザー用とプロジェクト用を二重設置しないでください。Codex で `$jev-cu-win` を指定して利用でき、変更は自動検出されます。表示されなければ Codex を再起動してください。
+
+### 更新・削除
+
+同じ checkout で、必要な変更を通常の Git 手順で取得・確認してからコピーを更新します。
+
+```powershell
+node scripts/install-skill.mjs --update
+node scripts/install-skill.mjs --uninstall
+```
+
+独自の `--skills-dir` を使った場合は更新・削除にも同じ値を渡してください。設置元 checkout が一致し、管理対象ファイルが未編集の場合だけ更新・削除します。別 checkout・リンク・追記ファイル・手編集を検出したら停止するので、先に手作業でバックアップ／照合してください。設置先の内容を無条件で再帰削除しません。checkout を移動する場合は移動前に削除し、移動後に設置し直します。削除は skill だけが対象で、CLI・ログ・API キーを削除しません。
+
+### AI 経由の実行と確認
+
+- `windows` / `observe` は TypeSafe API を使いません。一方、**dry-run を含む `run` は画面テキスト・目標などを TypeSafe へ送信し、費用が発生し得ます**。初回の API 実行前に送信と費用の範囲を理解し、許可してください。dry-run は GUI 操作をしないだけで、オフライン検証ではありません。
+- 新しい操作はまず dry-run で 1 判断を確認し、許可された範囲でのみ `--execute` を付けます。`--done-when` と操作後の `observe` で結果を確認します。`--text` は利用者の指定内容を渡し、入力欄選択時はクリックと入力が同じステップで起きることに注意してください。
+- **非 TTY の AI シェルでは y/N に回答できず、confirmation は false になって `confirm` で停止します（終了コード 2）**。チャットでの承認は CLI の入力にはなりません。AI は具体的な対象・操作・理由を説明し、不足する許可を確認したうえで、`--yes` なしのコマンドを利用者の対話型 Windows ターミナルへ引き継ぎます。利用者は新しい判断と y/N を確認してください。再実行は同じ計画の続きではなく、API が別の操作を選ぶ可能性があります。
+- `--yes` の常用、`y` のパイプ、許可リスト拡大やしきい値変更による確認回避はしません。引き継げない場合は停止を維持します。`ask_user` / `stop` / `escalate` / エラー・結果不明でも停止し、現在の画面を確認してから判断します。以前のステップが実行済みの場合があるため、入力やタスク全体を無条件で再実行しないでください。
+- `runs/` の JSONL と標準出力には目標・plan・画面ラベル・判断等が含まれ得ます。秘密を画面や引数に含めず、キー・`.env.local`・生ログ・スクリーンショットを PR やチャットに貼らないでください。パスワード欄除外や文字の切り詰めは完全な秘匿化ではありません。
+
 ## 使い方
 
 ### 1. 開いているウィンドウを確認
@@ -127,12 +186,14 @@ node scripts/cli.mjs run --app メモ帳 --goal "type the text into the editor" 
 
 ```powershell
 npm test     # 単体テスト（API を呼ばない・Windows 以外でも動く）
-npm run p0   # オフライン評価：保存した UI ツリーで Jev の正解率を測る（API キー必要）
+npm run p0   # 保存した UI ツリーの評価（TypeSafe API 通信・費用あり、API キー必要）
 ```
 
 | ファイル | 役割 |
 | --- | --- |
 | `scripts/cli.mjs` | コマンドラインの入口 |
+| `skill/jev-cu-win/SKILL.md` | CLI を利用する Codex 向け手順（設置元） |
+| `scripts/install-skill.mjs` | skill のコピー設置・更新・削除（API / GUI 不使用） |
 | `scripts/loop.mjs` | 観測 → 判断 → 関門 → 実行 のループ |
 | `scripts/jev-decide.mjs` | Jev API 呼び出し |
 | `scripts/policy.mjs` | 安全チェック（許可リスト・危険語・しきい値） |
