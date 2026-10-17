@@ -2,39 +2,34 @@
 
 [English](README.en.md) | 日本語
 
-[Jev-cu](https://github.com/Sac-Y/Jev-cu) の **Windows 版** です。
+**「jev をComputer Useで使いたい」人のための、Windows向けCodexスキルです。**
 
-Windows アプリの「次にどこを押すか」を **Jev**（TypeSafe の System One モデル）に判断させて、Windows の **UI Automation** で実際に操作します。
+Codexに「電卓で計算して」「メモ帳に文字を入力して」と頼むと、**Jev**（TypeSafeのSystem Oneモデル）が次に操作する要素を判断し、Windowsの **UI Automation** でクリックや入力を行います。[Jev-cu](https://github.com/Sac-Y/Jev-cu)のWindows版です。
 
-- Jev には画面の**文字情報だけ**を送ります（スクリーンショットは送りません）
-- 既定は**試運転（dry-run）**です。Jev の判断を表示するだけで、何もクリックしません
-- 削除・送信・支払い・ログイン・インストールなどの操作は、実行前に **y/N で確認**します
+このスキルは、Windows用CLIをCodexから利用するための手順書です。画面操作には同梱のNode.js・PowerShellコードを使い、CodexのComputer Useツールや `cua_repl` には依存しません。
 
-## 仕組み
+- Jevに送るのは画面の**文字情報**です。スクリーンショットは送りません
+- CLIの既定は**試運転（dry-run）**です。実操作の前にJevの判断を確認します
+- **試運転でもTypeSafe APIへの送信と課金が発生し得ます**
+- 確認が必要な操作では停止します。AIが確認を省略して実行することはありません
 
-```
- ┌─────────────┐  画面の文字   ┌──────────┐  どれを押す？  ┌──────────┐
- │ Windows アプリ │ ───────────▶ │ jev-cu-win │ ─────────────▶ │  Jev API   │
- │ (電卓など)    │ ◀─────────── │ + 安全チェック│ ◀───────────── │ (TypeSafe) │
- └─────────────┘  クリック/入力  └──────────┘  要素・確信度    └──────────┘
-```
+## スキルを入れて使う
 
-1. **観測**：PowerShell（`scripts/uia-host.ps1`）が UI Automation でウィンドウ内のボタンや入力欄を一覧にします
-2. **判断**：その一覧から候補を選び、Jev に「次に押す要素・操作の種類・完了したか・危険か」を聞きます
-3. **関門**：`scripts/policy.mjs` が、許可リスト外のアプリや危険な操作を止めます
-4. **実行**：問題なければクリックや入力を行い、1 に戻ります
-
-## 必要なもの
+### 1. 必要なものを用意する
 
 - Windows 10 / 11
-- [Node.js](https://nodejs.org/ja) 20 以上（LTS 版をインストールしてください）
-- TypeSafe の API キー（https://console.typesafe.ai/settings/keys ）
+- スキルを利用できるCodex
+- [Git](https://git-scm.com/downloads/win)
+- [Node.js](https://nodejs.org/ja) 20以上
+- [TypeSafeのAPIキー](https://console.typesafe.ai/settings/keys)
 
-PowerShell は Windows に最初から入っているものを使います。追加のインストールは不要です。
+PowerShellはWindows標準のものを使います。追加のnpmパッケージは不要で、`npm install` は必要ありません。
 
-## セットアップ
+**スキルの設置だけでは、Node.jsやAPIキーは設定されません。** 次の準備と設置は、操作したいWindows環境で行ってください。
 
-PowerShell かコマンド プロンプトを開いて：
+### 2. 本体を取得してAPIキーを設定する
+
+PowerShellを開き、本体を置いておきたいフォルダで実行します。
 
 ```powershell
 git clone https://github.com/WorkFrameHub/jev-cu-win.git
@@ -43,15 +38,58 @@ copy .env.example .env.local
 notepad .env.local
 ```
 
-メモ帳が開いたら `TYPESAFE_API_KEY=` の後ろに API キーを貼り付けて保存します。
+既に本体や `.env.local` がある場合は、新しく複製・上書きせず既存のものを使ってください。
 
-依存パッケージはありません（`npm install` は不要です）。
+メモ帳で `TYPESAFE_API_KEY=` の後ろにキーを貼り付け、保存します。キーは利用者自身で設定し、チャットやGitHubに貼らないでください。既に環境変数 `TYPESAFE_API_KEY` を設定している場合は、`.env.local` の作成は不要です。
 
-## Codex skill として使う（任意）
+### 3. スキルを設置する
 
-CLI はそのまま利用できます。`skill/jev-cu-win/SKILL.md` は、Codex がこの CLI を呼ぶための薄い手順書です。元祖 [Jev-cu の skill + scripts 構成](https://github.com/Sac-Y/Jev-cu)を参考にしていますが、macOS AX / `cua_repl` には依存しません。**SKILL.md を置いても Node.js・PowerShell・API キーはインストール／設定されません。** 上のセットアップは利用者が別途行ってください。skill の設置スクリプトも認証情報には触れません。
+取得した `jev-cu-win` フォルダで実行します。
 
-### 依存と実行環境の確認
+```powershell
+node scripts/install-skill.mjs
+```
+
+標準の設置先は `$HOME/.agents/skills/jev-cu-win` です。`SKILL.md` に本体の絶対パスを設定し、ライセンスと管理用ファイルを設置します。API通信や画面操作は行わず、認証情報にも触れません。同名の設置先が既にある場合は、上書きせず停止します。
+
+**設置後も本体のフォルダを移動・削除しないでください。** スキルはそのフォルダのCLIを呼び出します。本体を移動する場合は、移動前にスキルを削除し、移動後に設置し直します。
+
+### 4. Codexで呼び出す
+
+Codexのスキル一覧に `jev-cu-win` が表示されたら使えます。表示されなければCodexを再起動してください。
+
+まず、APIを呼ばない画面確認から始めます。
+
+```text
+$jev-cu-win 開いているウィンドウを確認して、電卓の画面を読み取って。
+```
+
+次に、操作したい内容を伝えます。電卓を開いた状態で、例えば次のように頼みます。
+
+```text
+$jev-cu-win 電卓で12×3を計算して、表示が36になったことを確認して。
+電卓の画面文字と目標をTypeSafe APIへ送信し、API利用料が発生することを許可します。
+まず試運転で対象を確認してから、計算を実行して。
+```
+
+入力する文字も指定できます。メモ帳の空の編集欄を使う例です。
+
+```text
+$jev-cu-win メモ帳の空の編集欄に「こんにちは」と入力して、結果を確認して。
+メモ帳の画面文字と目標をTypeSafe APIへ送信し、API利用料が発生することを許可します。
+```
+
+スキルが見つかっても、Codexから目的のWindowsデスクトップへアクセスできるとは限りません。画面や対象の要素が見えない場合は停止し、利用者のWindowsターミナルへ引き継ぎます。詳しくは下の「実行環境」と「AI経由の実行と確認」を参照してください。
+
+## 送信・費用と操作確認
+
+`windows` / `observe` はTypeSafe APIを使いません。一方、**試運転を含む `run` は、画面の候補要素・文脈、目標、手順のヒント、最近の操作などをTypeSafeへ送信し、費用が発生し得ます。** 機密情報を含む画面は避け、送信する範囲を確認してから実行してください。
+
+非対話型のAIシェルではCLIのy/N確認に回答できず、`confirm` で停止します。チャットで承認してもCLIの確認には入力されません。その場合は、確認を省略するオプションを付けず、利用者の対話型Windowsターミナルで実行して確認します。
+
+## スキルの管理と実行環境
+
+### 実行環境
 
 リポジトリのルートで、API や GUI を使わず確認できます。
 
@@ -67,25 +105,15 @@ node scripts/install-skill.mjs --help
 
 skill が見つかることと、目的の Windows デスクトップにアクセスできることは別です。[公式 Windows sandbox 文書](https://learn.chatgpt.com/docs/windows/windows-sandbox)では private desktop を使う構成も説明されています。WSL・cloud・sandbox 越しの通常デスクトップ操作は動作確認済みの対応環境ではありません。利用時はまず `windows` / `observe` で対象を確認し、見えなければ停止して利用者の Windows ターミナルへ引き継ぎます。sandbox 無効化を標準手順にはしません。
 
-### 設置
+### プロジェクト内だけで使う
 
-[現行公式の探索先](https://learn.chatgpt.com/docs/build-skills)に合わせ、標準は `$HOME/.agents/skills/jev-cu-win` です（確認日: 2026-10-17）。元祖の `~/.codex/skills` 固定ではありません。対象 Codex ホストの公式仕様を確認して配置先を選んでください。
-
-次のコマンドは **skill のファイルを書き込みます**。利用する Windows ホストで、設置したいときだけ実行してください。
-
-```powershell
-node scripts/install-skill.mjs
-```
-
-`SKILL.md` の `{{REPO_DIR}}` を現在の checkout の絶対パスに置換し、MIT `LICENSE` と管理用ファイルをコピーします。CLI 本体はコピーしないため、この checkout を残してください。既存の同名ディレクトリがある場合は上書きせず停止します。
-
-プロジェクト内だけで使う場合は、そのプロジェクトの `.agents/skills` を明示できます。
+特定プロジェクトだけで使う場合は、そのプロジェクトの `.agents/skills` を指定します。
 
 ```powershell
 node scripts/install-skill.mjs --skills-dir "C:/path/to/project/.agents/skills"
 ```
 
-`--skills-dir` は `jev-cu-win` の**親ディレクトリ**です。Codex はリポジトリ内の作業ディレクトリからルートまでの `.agents/skills` も探索します。ユーザー用とプロジェクト用を二重設置しないでください。Codex で `$jev-cu-win` を指定して利用でき、変更は自動検出されます。表示されなければ Codex を再起動してください。
+`--skills-dir` は `jev-cu-win` の親ディレクトリです。ユーザー用とプロジェクト用を二重設置しないでください。対象Codexホストの探索先は[公式のスキル文書](https://learn.chatgpt.com/docs/build-skills)も確認してください。
 
 ### 更新・削除
 
@@ -106,7 +134,21 @@ node scripts/install-skill.mjs --uninstall
 - `--yes` の常用、`y` のパイプ、許可リスト拡大やしきい値変更による確認回避はしません。引き継げない場合は停止を維持します。`ask_user` / `stop` / `escalate` / エラー・結果不明でも停止し、現在の画面を確認してから判断します。以前のステップが実行済みの場合があるため、入力やタスク全体を無条件で再実行しないでください。
 - `runs/` の JSONL と標準出力には目標・plan・画面ラベル・判断等が含まれ得ます。秘密を画面や引数に含めず、キー・`.env.local`・生ログ・スクリーンショットを PR やチャットに貼らないでください。パスワード欄除外や文字の切り詰めは完全な秘匿化ではありません。
 
-## 使い方
+## 仕組み
+
+```
+ ┌─────────────┐  画面の文字   ┌──────────┐  どれを押す？  ┌──────────┐
+ │ Windows アプリ │ ───────────▶ │ jev-cu-win │ ─────────────▶ │  Jev API   │
+ │ (電卓など)    │ ◀─────────── │ + 安全チェック│ ◀───────────── │ (TypeSafe) │
+ └─────────────┘  クリック/入力  └──────────┘  要素・確信度    └──────────┘
+```
+
+1. **観測**：PowerShell（`scripts/uia-host.ps1`）が UI Automation でウィンドウ内のボタンや入力欄を一覧にします
+2. **判断**：その一覧から候補を選び、Jev に「次に押す要素・操作の種類・完了したか・危険か」を聞きます
+3. **関門**：`scripts/policy.mjs` が、許可リスト外のアプリや危険な操作を止めます
+4. **実行**：問題なければクリックや入力を行い、1 に戻ります
+
+## CLIで直接使う
 
 ### 1. 開いているウィンドウを確認
 
@@ -210,7 +252,7 @@ PowerShell を別のもの（例：PowerShell 7）にしたい場合は、環境
 | --- | --- | --- |
 | OS | macOS | Windows |
 | 画面の読み取り・操作 | Codex デスクトップアプリの Computer Use | Windows UI Automation（PowerShell） |
-| 起動方法 | Codex の `cua_repl` の中で実行 | 普通のコマンドライン |
+| 起動方法 | Codex の `cua_repl` の中で実行 | CodexスキルからCLIを呼び出す／CLIを直接実行 |
 | 危険な操作 | 止まって終了 | その場で y/N 確認 |
 
 ## 制限
