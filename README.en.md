@@ -47,6 +47,65 @@ When Notepad opens, paste your API key after `TYPESAFE_API_KEY=` and save.
 
 There are no dependencies (`npm install` is not needed).
 
+## Use as a Codex skill (optional)
+
+The CLI remains available as before. `skill/jev-cu-win/SKILL.md` is a thin instruction layer for Codex to call it. Inspired by the original [Jev-cu skill + scripts structure](https://github.com/Sac-Y/Jev-cu), it uses this Windows PowerShell UI Automation backend, with no macOS AX or `cua_repl` dependency. **Installing SKILL.md does not install/configure Node.js, PowerShell or an API key.** The user prepares those separately using Setup above; the skill installer never handles credentials.
+
+### Check prerequisites
+
+From the checkout root, these checks use neither the API nor the GUI:
+
+```powershell
+node --version                         # 20+
+Get-Command powershell.exe             # default PowerShell
+# If JEV_CU_POWERSHELL is set, also check that selected executable
+node scripts/cli.mjs --help
+node scripts/install-skill.mjs --help
+```
+
+No npm dependencies are required. For `run`, the user must already have prepared `TYPESAFE_API_KEY` in the process environment or the checkout's `.env.local`. Do not ask an agent to retrieve or display its value. `windows` and `observe` need no API key.
+
+Skill discovery does not grant access to the intended Windows desktop. The [official Windows sandbox documentation](https://learn.chatgpt.com/docs/windows/windows-sandbox) describes configurations using a private desktop. GUI access across WSL, cloud or sandbox boundaries to the normal host desktop is not verified support. At runtime, check the intended target with `windows` / `observe`; if unavailable, stop and hand off to the user's Windows terminal. Disabling the sandbox is not the standard setup procedure.
+
+### Install
+
+The default is `$HOME/.agents/skills/jev-cu-win`, following the [current official discovery locations](https://learn.chatgpt.com/docs/build-skills) (checked 2026-10-17), rather than copying the original installer's `~/.codex/skills` destination. Check the documentation for the Codex host you will actually use.
+
+The following command **writes skill files**. Run it only when you want to install on that Windows host:
+
+```powershell
+node scripts/install-skill.mjs
+```
+
+It replaces `{{REPO_DIR}}` with this checkout's absolute path and copies the instructions, MIT `LICENSE` and an ownership manifest. It does not copy the CLI, so retain the checkout. An existing destination is refused rather than overwritten.
+
+For a project-scoped installation, explicitly select that project's `.agents/skills`:
+
+```powershell
+node scripts/install-skill.mjs --skills-dir "C:/path/to/project/.agents/skills"
+```
+
+`--skills-dir` is the **parent** of the `jev-cu-win` folder. Codex also scans `.agents/skills` from its working directory up to the repository root. Avoid duplicate user/project installations. Invoke `$jev-cu-win` in Codex; changes are detected automatically. Restart Codex if they do not appear.
+
+### Update or remove
+
+In the same checkout, obtain and review desired changes using your normal Git workflow, then refresh the installed copy:
+
+```powershell
+node scripts/install-skill.mjs --update
+node scripts/install-skill.mjs --uninstall
+```
+
+If you selected `--skills-dir`, pass the same value for updates/removal. Management requires the same owning checkout and unchanged installed files. Another checkout, links, extra files or local edits cause a refusal; back up/reconcile those manually first. The installer never unconditionally removes a destination recursively. Uninstall before moving the checkout, then reinstall at the new location. Removal affects the skill only, leaving the CLI, logs and API key in place.
+
+### Agent execution and confirmation
+
+- `windows` / `observe` do not call TypeSafe. **Every `run`, including dry-run, can send screen text, goals and other context to the metered TypeSafe API.** Understand and authorize that data transfer/cost before the first API-backed run. Dry-run prevents GUI actions; it is not an offline test.
+- Preview one decision for a new workflow, then add `--execute` only within the authorized scope. Use `--done-when` and a subsequent `observe` to verify success. Supply user-approved input through `--text`; selecting a text field may click and type it in one step.
+- **In a non-TTY agent shell, y/N cannot be answered: confirmation returns false and stops with `confirm` (exit code 2).** Chat approval does not feed the CLI prompt. The agent explains the specific target, action and gate reasons, obtains any missing authorization, and hands the command **without `--yes`** to the user's interactive Windows terminal. The user reviews the fresh decision and y/N prompt. Rerunning makes a new API decision and can choose a different action; it does not resume an approved stored plan.
+- Do not routinely add `--yes`, pipe `y`, widen the allowlist or lower thresholds to bypass a gate. Stay stopped if handoff is unavailable. Stop for `ask_user`, `stop`, `escalate`, errors or uncertain outcomes too; inspect the current state before retrying. Earlier steps may already have run, so never blindly replay typing or whole tasks.
+- JSONL under `runs/` and console output can include goals, plans, screen labels and decisions. Keep secrets out of screens and arguments; never paste keys, `.env.local`, raw logs or screenshots into PRs/chat. Password filtering and truncation are not complete redaction.
+
 ## Usage
 
 ### 1. List open windows
@@ -127,12 +186,14 @@ node scripts/cli.mjs run --app Notepad --goal "type the text into the editor" --
 
 ```powershell
 npm test     # unit tests (no API calls, also run outside Windows)
-npm run p0   # offline eval: Jev's accuracy on saved UI trees (needs an API key)
+npm run p0   # saved UI-tree eval (metered TypeSafe API calls; needs an API key)
 ```
 
 | File | Role |
 | --- | --- |
 | `scripts/cli.mjs` | Command-line entry point |
+| `skill/jev-cu-win/SKILL.md` | Source instructions for Codex to use the CLI |
+| `scripts/install-skill.mjs` | Copy/install, update and remove the skill (no API / GUI) |
 | `scripts/loop.mjs` | Observe → decide → gate → act loop |
 | `scripts/jev-decide.mjs` | Jev API calls |
 | `scripts/policy.mjs` | Safety gate (allowlist, sensitive words, thresholds) |
