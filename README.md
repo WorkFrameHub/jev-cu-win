@@ -81,6 +81,34 @@ $jev-cu-win メモ帳の空の編集欄に「こんにちは」と入力して�
 
 スキルが見つかっても、Codexから目的のWindowsデスクトップへアクセスできるとは限りません。画面や対象の要素が見えない場合は停止し、利用者のWindowsターミナルへ引き継ぎます。詳しくは下の「実行環境」と「AI経由の実行と確認」を参照してください。
 
+## Claude Codeで使う
+
+同じスキルをClaude Codeでも使えます。手順1・2（本体の取得とAPIキーの設定）は共通です。
+
+Claude Codeがスキルを探すのは `.claude/skills` です。標準の設置先 `$HOME/.agents/skills` は読まれないため、設置先を指定してください。
+
+```powershell
+# 特定のプロジェクトだけで使う（そのプロジェクトの .claude/skills に設置）
+node scripts/install-skill.mjs --skills-dir "C:/path/to/project/.claude/skills"
+
+# すべてのプロジェクトで使う（$HOME/.claude/skills に設置）
+node scripts/install-skill.mjs --target claude
+```
+
+Claude Codeを開いたままで設置した場合、それまで `.claude/skills` フォルダが無かったときは、`/reload-skills` を実行するか、Claude Codeを開き直してください。スキル一覧に `jev-cu-win` が出れば使えます。
+
+呼び出しは `/jev-cu-win` です。
+
+```text
+/jev-cu-win 電卓で 1＋2 を計算して、表示が 3 になったことを確認して。
+電卓の画面文字と目標を TypeSafe API へ送信し、API 利用料が発生することを許可します。
+まず試運転で対象を確認してから実行して。
+```
+
+更新・削除には、設置と同じ `--skills-dir` または `--target claude` を付けます。
+
+動作確認した環境：Windows 11 のClaudeデスクトップアプリ（Codeタブ）、プロジェクトの `.claude/skills` に設置、`/jev-cu-win` で呼び出し、電卓で 1＋2＝3。次は未確認です：`$HOME/.claude/skills` への設置、`/` を付けない依頼でClaudeが自分からスキルを使う場合、ターミナル版の `claude` コマンド、WSL・クラウド環境、y/N確認が出たときの引き継ぎ。
+
 ## 送信・費用と操作確認
 
 `windows` / `observe` はTypeSafe APIを使いません。一方、**試運転を含む `run` は、画面の候補要素・文脈、目標、手順のヒント、最近の操作などをTypeSafeへ送信し、費用が発生し得ます。** 機密情報を含む画面は避け、送信する範囲を確認してから実行してください。
