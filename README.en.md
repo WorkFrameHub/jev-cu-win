@@ -87,6 +87,30 @@ node scripts/install-skill.mjs --skills-dir "C:/path/to/project/.agents/skills"
 
 `--skills-dir` is the **parent** of the `jev-cu-win` folder. Codex also scans `.agents/skills` from its working directory up to the repository root. Avoid duplicate user/project installations. Invoke `$jev-cu-win` in Codex; changes are detected automatically. Restart Codex if they do not appear.
 
+### Use with Claude Code
+
+The same skill works in Claude Code. Claude Code discovers skills in `.claude/skills`, not in the default `$HOME/.agents/skills`, so select the destination explicitly:
+
+```powershell
+# One project only (that project's .claude/skills)
+node scripts/install-skill.mjs --skills-dir "C:/path/to/project/.claude/skills"
+
+# All projects ($HOME/.claude/skills)
+node scripts/install-skill.mjs --target claude
+```
+
+If Claude Code is already open and the `.claude/skills` folder did not exist when the session started, run `/reload-skills` or reopen Claude Code. Invoke the skill with `/jev-cu-win`, for example:
+
+```text
+/jev-cu-win Calculate 1 + 2 in Calculator and confirm the display shows 3.
+I allow sending Calculator's screen text and the goal to the TypeSafe API, which may incur charges.
+Preview the target with a dry-run first, then execute.
+```
+
+Pass the same `--skills-dir` or `--target claude` when updating or removing.
+
+Verified: Claude desktop app (Code tab) on Windows 11, project-scoped `.claude/skills`, invoked with `/jev-cu-win`, Calculator 1 + 2 = 3. Not yet verified: `$HOME/.claude/skills`, Claude invoking the skill on its own without `/`, the terminal `claude` CLI, WSL/cloud environments, and the y/N confirmation handoff.
+
 ### Update or remove
 
 In the same checkout, obtain and review desired changes using your normal Git workflow, then refresh the installed copy:

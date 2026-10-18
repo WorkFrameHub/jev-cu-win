@@ -21,7 +21,15 @@ function lstatOrNull(target) {
   }
 }
 
-export function installSkill({ skillsDir = path.join(os.homedir(), ".agents", "skills"), mode = "install", repoDir = REPO_DIR } = {}) {
+// Default parent per agent host. Claude Code scans .claude/skills, not .agents/skills.
+const TARGET_DIRS = { codex: [".agents", "skills"], claude: [".claude", "skills"] };
+
+export function defaultSkillsDir(target = "codex", home = os.homedir()) {
+  if (!Object.hasOwn(TARGET_DIRS, target)) throw new Error(`Unknown --target: ${target} (use codex or claude)`);
+  return path.join(home, ...TARGET_DIRS[target]);
+}
+
+export function installSkill({ skillsDir = defaultSkillsDir(), mode = "install", repoDir = REPO_DIR } = {}) {
   if (!["install", "update", "uninstall"].includes(mode)) throw new Error("Unknown mode");
   const root = fs.realpathSync(repoDir);
   const dest = path.resolve(skillsDir, "jev-cu-win");
@@ -61,13 +69,18 @@ export function installSkill({ skillsDir = path.join(os.homedir(), ".agents", "s
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   try {
-    const { values } = parseArgs({ options: { "skills-dir": { type: "string" }, update: { type: "boolean" }, uninstall: { type: "boolean" }, help: { type: "boolean" } } });
+    const { values } = parseArgs({ options: { "skills-dir": { type: "string" }, target: { type: "string", default: "codex" }, update: { type: "boolean" }, uninstall: { type: "boolean" }, help: { type: "boolean" } } });
     if (values.help) {
-      console.log("node scripts/install-skill.mjs [--skills-dir <parent>] [--update | --uninstall]\nDefault parent: $HOME/.agents/skills. Copies instructions and LICENSE only.");
+      console.log(
+        "node scripts/install-skill.mjs [--target codex|claude] [--skills-dir <parent>] [--update | --uninstall]\n" +
+          "Default parent: $HOME/.agents/skills (codex) or $HOME/.claude/skills (claude). --skills-dir overrides it.\n" +
+          "Copies instructions and LICENSE only.",
+      );
     } else {
       if (values.update && values.uninstall) throw new Error("Choose --update or --uninstall");
       const mode = values.uninstall ? "uninstall" : values.update ? "update" : "install";
-      console.log(`${mode}: ${installSkill({ skillsDir: values["skills-dir"], mode })}`);
+      const skillsDir = values["skills-dir"] ?? defaultSkillsDir(values.target);
+      console.log(`${mode}: ${installSkill({ skillsDir, mode })}`);
     }
   } catch (error) {
     console.error(`[install-skill] ${error.message}`);

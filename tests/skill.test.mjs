@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { installSkill } from "../scripts/install-skill.mjs";
+import { defaultSkillsDir, installSkill } from "../scripts/install-skill.mjs";
 
 function workspace(t) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "jev-cu-win-skill-"));
@@ -57,6 +57,14 @@ test("skill management refuses another checkout and an unmanaged existing direct
   fs.unlinkSync(path.join(dest, ".jev-cu-win-install.json"));
   assert.throws(() => installSkill({ ...options, mode: "uninstall" }), /missing or extra/);
   assert.equal(fs.existsSync(path.join(dest, "SKILL.md")), true);
+});
+
+test("default skills directory per target: Codex .agents/skills, Claude Code .claude/skills", () => {
+  const home = path.join(os.tmpdir(), "home");
+  assert.equal(defaultSkillsDir(undefined, home), path.join(home, ".agents", "skills"));
+  assert.equal(defaultSkillsDir("codex", home), path.join(home, ".agents", "skills"));
+  assert.equal(defaultSkillsDir("claude", home), path.join(home, ".claude", "skills"));
+  assert.throws(() => defaultSkillsDir("cursor", home), /Unknown --target/);
 });
 
 test("skill management refuses a linked target", (t) => {

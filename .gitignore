@@ -3,3 +3,6 @@ node_modules/
 .env.*
 !.env.example
 runs/
+# Skill copies installed into this checkout by scripts/install-skill.mjs --skills-dir
+.agents/skills/jev-cu-win/
+.claude/skills/jev-cu-win/
